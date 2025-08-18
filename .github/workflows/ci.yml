@@ -2,64 +2,80 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev] # Run CI when PR targets main or dev
+    branches: [ main, dev ]
   push:
-    branches: [main, dev] # Also run when pushing directly
+    branches: [ main, dev ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. Install pnpm
       - name: Install pnpm
-        run: npm install -g pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
-      # 4. Install dependencies
       - name: Install dependencies
         run: pnpm install
 
-      # 5. Install Playwright browsers
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
 
-      # 6. Build backend
+      # --- Build & start services ---
       - name: Build backend
         run: pnpm run build
 
-      # 7. Start backend
-      - name: Start backend
-        run: node backend/dist/server.js &
-      
-      # 8. Start frontend (simple static server)
-      - name: Start frontend
-        run: pnpm exec http-server ./frontend -p 3000 &
-      
-      # 9. Wait for services to be ready
-      - name: Wait for services
+      - name: Start backend (background)
+        run: |
+          node backend/dist/server.js > backend.log 2>&1 & echo $! > backend.pid
+          sleep 1
+          echo "Backend PID: $(cat backend.pid)"
+
+      - name: Start frontend (background)
+        run: |
+          pnpm exec http-server ./frontend -p 3000 > frontend.log 2>&1 & echo $! > frontend.pid
+          sleep 1
+          echo "Frontend PID: $(cat frontend.pid)"
+
+      - name: Wait for services (5 min timeout)
         run: |
           pnpm add -D wait-on
-          npx wait-on http://localhost:9999/health
-          npx wait-on http://localhost:3000
+          npx wait-on --timeout 300000 http://localhost:9999/health
+          npx wait-on --timeout 300000 http://localhost:3000
+          curl -fsS http://localhost:9999/health || (echo "backend health failed" && false)
+          curl -fsS http://localhost:3000 || (echo "frontend root failed" && false)
 
-      # 10. Run Lint
-      - name: Run ESLint
-        run: pnpm lint
+      # --- PR checklist gates ---
+      - name: Lint
+        run: pnpm run lint
 
-      # 11. Run TypeScript type-check
-      - name: Run Type Check
-        run: pnpm typecheck
+      - name: Typecheck
+        run: pnpm run typecheck
 
-      # 12. Run Tests (Playwright)
-      - name: Run Tests
+      - name: Tests (Playwright)
         run: pnpm test
+
+      # --- Always upload logs if something failed, to debug startup issues ---
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            backend.log
+            frontend.log
+
+      # --- Cleanup background processes so runners don't hang ---
+      - name: Stop services
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then kill $(cat backend.pid) || true; fi
+          if [ -f frontend.pid ]; then kill $(cat frontend.pid) || true; fi
