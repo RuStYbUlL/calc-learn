@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev] # Run CI when PR targets main or dev
+  push:
+    branches: [main, dev] # Also run when pushing directly
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. Install pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      # 4. Install dependencies
+      - name: Install dependencies
+        run: pnpm install
+
+      # 5. Install Playwright browsers
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
+      # 6. Build backend
+      - name: Build backend
+        run: pnpm run build
+
+      # 7. Start backend
+      - name: Start backend
+        run: node backend/dist/server.js &
+      
+      # 8. Start frontend (simple static server)
+      - name: Start frontend
+        run: pnpm exec http-server ./frontend -p 3000 &
+      
+      # 9. Wait for services to be ready
+      - name: Wait for services
+        run: |
+          pnpm add -D wait-on
+          npx wait-on http://localhost:9999/health
+          npx wait-on http://localhost:3000
+
+      # 10. Run Lint
+      - name: Run ESLint
+        run: pnpm lint
+
+      # 11. Run TypeScript type-check
+      - name: Run Type Check
+        run: pnpm typecheck
+
+      # 12. Run Tests (Playwright)
+      - name: Run Tests
+        run: pnpm test
