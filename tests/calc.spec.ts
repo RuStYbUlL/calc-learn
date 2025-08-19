@@ -39,7 +39,6 @@ test.afterAll(async () => {
   }
 });
 
-
 test("add: 2 + 3 = 5", async ({ page }) => {
   await page.goto("http://localhost:3000");
   await page.fill("#a", "2");
@@ -64,4 +63,17 @@ test("sub: 5 - 2 = 3", async ({ page }) => {
   await expect(out).toContainText('"result": 3');
 
   await page.screenshot({ path: "test-artifacts/calc-sub.png" });
+});
+
+test("mult: 5 * 2 = 10", async ({ page }) => {
+  await page.goto("http://localhost:3000");
+  await page.fill("#a", "5");
+  await page.selectOption("#op", "mul");
+  await page.fill("#b", "2");
+  await page.click("#compute");
+
+  const out = page.locator("#out");
+  await expect(out).toContainText('"result": 10');
+
+  await page.screenshot({ path: "test-artifacts/calc-mul.png" });
 });
