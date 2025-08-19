@@ -65,7 +65,7 @@ test("sub: 5 - 2 = 3", async ({ page }) => {
   await page.screenshot({ path: "test-artifacts/calc-sub.png" });
 });
 
-test("mult: 5 * 2 = 10", async ({ page }) => {
+test("mul: 5 * 2 = 10", async ({ page }) => {
   await page.goto("http://localhost:3000");
   await page.fill("#a", "5");
   await page.selectOption("#op", "mul");
