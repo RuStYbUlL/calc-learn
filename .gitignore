@@ -1,1 +1,8 @@
-node_modules
+# Dependencies & build
+node_modules/
+backend/dist/
+
+# Playwright outputs (generated, do not commit)
+playwright-report/
+test-results/
+test-artifacts/
