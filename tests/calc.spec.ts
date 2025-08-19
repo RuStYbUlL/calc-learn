@@ -1,42 +1,58 @@
 import { test, expect } from "@playwright/test";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import { createServer } from "http";
 import { readFileSync } from "fs";
 import { join } from "path";
+// @ts-ignore
+import waitOn from "wait-on";
 
 let backendProcess: any;
 let frontendServer: any;
 
 test.beforeAll(async () => {
-  // Start backend server
-  backendProcess = spawn("node", ["backend/dist/server.js"], {
+  // 1) Build the backend so backend/dist/server.js exists (CI-safe)
+  execSync("pnpm run build", { stdio: "inherit" });
+
+  // 2) Start backend with the same Node used by Playwright
+  backendProcess = spawn(process.execPath, ["backend/dist/server.js"], {
     stdio: "pipe",
     cwd: process.cwd(),
   });
 
-  // Start frontend server
+  // (optional) pipe backend logs to help debug CI failures
+  backendProcess.stdout?.on("data", (d: Buffer) =>
+    process.stdout.write(`[api] ${d}`)
+  );
+  backendProcess.stderr?.on("data", (d: Buffer) =>
+    process.stderr.write(`[api] ${d}`)
+  );
+
+  // 3) Start a minimal static server for the single HTML file
   const frontendHtml = readFileSync(
     join(process.cwd(), "frontend/index.html"),
     "utf-8"
   );
-  frontendServer = createServer((req, res) => {
+  frontendServer = createServer((_, res) => {
     res.writeHead(200, { "content-type": "text/html" });
     res.end(frontendHtml);
   });
+  await new Promise<void>((r) => frontendServer.listen(3000, r));
 
-  frontendServer.listen(3000);
-
-  // Wait a bit for servers to start
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // 4) Wait until both services are actually reachable (no fixed sleep)
+  await waitOn({
+    resources: ["tcp:9999", "http://localhost:3000"],
+    timeout: 30000,
+    validateStatus: (status: number) => status >= 200 && status < 500, // 404 is still "up" for our static server
+  });
 });
 
 test.afterAll(async () => {
-  if (backendProcess) {
-    backendProcess.kill();
-  }
-  if (frontendServer) {
-    frontendServer.close();
-  }
+  try {
+    frontendServer?.close();
+  } catch {}
+  try {
+    backendProcess?.kill();
+  } catch {}
 });
 
 test("add: 2 + 3 = 5", async ({ page }) => {
