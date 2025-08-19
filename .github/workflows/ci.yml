@@ -2,64 +2,69 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev] # Run CI when PR targets main or dev
+    branches: [ main, dev ]
   push:
-    branches: [main, dev] # Also run when pushing directly
+    branches: [ main, dev ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
+      # 1) Set up Node (no pnpm cache here)
       - name: Setup Node.js
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. Install pnpm
-      - name: Install pnpm
-        run: npm install -g pnpm
+      # 2) Enable Corepack and activate the pnpm version your repo expects
+      - name: Activate pnpm 10.14.0 via Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.14.0 --activate
+          pnpm -v
 
-      # 4. Install dependencies
+      # 3) Cache pnpm store (now that pnpm exists, we can resolve the store path)
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # 4) Install deps (fail if lockfile drift)
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      # 5. Install Playwright browsers
+      # 5) Typecheck / Lint / Test (adjust to your workspace scripts)
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps
 
-      # 6. Build backend
-      - name: Build backend
-        run: pnpm run build
-
-      # 7. Start backend
-      - name: Start backend
-        run: node backend/dist/server.js &
-      
-      # 8. Start frontend (simple static server)
-      - name: Start frontend
-        run: pnpm exec http-server ./frontend -p 3000 &
-      
-      # 9. Wait for services to be ready
-      - name: Wait for services
-        run: |
-          pnpm add -D wait-on
-          npx wait-on http://localhost:9999/health
-          npx wait-on http://localhost:3000
-
-      # 10. Run Lint
-      - name: Run ESLint
-        run: pnpm lint
-
-      # 11. Run TypeScript type-check
-      - name: Run Type Check
-        run: pnpm typecheck
-
-      # 12. Run Tests (Playwright)
-      - name: Run Tests
+      - name: Run Playwright tests
         run: pnpm test
+
+      # 6) Upload artifacts on failure for debugging
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            **/playwright-report
+            **/test-results
+            **/logs
