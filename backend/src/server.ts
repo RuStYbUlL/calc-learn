@@ -18,12 +18,6 @@ const server = createServer(async (req, res) => {
   Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
-  // Health
-  if (req.method === "GET" && req.url === "/health") {
-    res.writeHead(200, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ ok: true, message: "server up" }));
-  }
-
   // Minimal calculator: add/sub only
   if (req.method === "POST" && req.url === "/api/calc") {
     try {
@@ -50,10 +44,15 @@ const server = createServer(async (req, res) => {
           res.writeHead(200, { "content-type": "application/json" });
           return res.end(JSON.stringify({ result }));
         }
+        case "mul": {
+          const result = aNum * bNum;
+          res.writeHead(200, { "content-type": "application/json" });
+          return res.end(JSON.stringify({ result }));
+        }
         default: {
           // Clear error message makes the rule obvious
           res.writeHead(400, { "content-type": "application/json" });
-          return res.end(JSON.stringify({ error: "Unsupported op. Allowed: 'add', 'sub'." }));
+          return res.end(JSON.stringify({ error: "Unsupported op. Allowed: 'add', 'sub', 'mul'." }));
         }
       }
     } catch {

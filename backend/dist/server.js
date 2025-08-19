@@ -19,10 +19,6 @@ var server = (0, import_http.createServer)(async (req, res) => {
     res.writeHead(204);
     return res.end();
   }
-  if (req.method === "GET" && req.url === "/health") {
-    res.writeHead(200, { "content-type": "application/json" });
-    return res.end(JSON.stringify({ ok: true, message: "server up" }));
-  }
   if (req.method === "POST" && req.url === "/api/calc") {
     try {
       const body = await readJson(req);
@@ -44,9 +40,14 @@ var server = (0, import_http.createServer)(async (req, res) => {
           res.writeHead(200, { "content-type": "application/json" });
           return res.end(JSON.stringify({ result }));
         }
+        case "mul": {
+          const result = aNum * bNum;
+          res.writeHead(200, { "content-type": "application/json" });
+          return res.end(JSON.stringify({ result }));
+        }
         default: {
           res.writeHead(400, { "content-type": "application/json" });
-          return res.end(JSON.stringify({ error: "Unsupported op. Allowed: 'add', 'sub'." }));
+          return res.end(JSON.stringify({ error: "Unsupported op. Allowed: 'add', 'sub', 'mul'." }));
         }
       }
     } catch {
