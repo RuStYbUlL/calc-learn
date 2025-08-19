@@ -49,10 +49,14 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   try {
     frontendServer?.close();
-  } catch {}
+  } catch {
+    // Ignore cleanup errors
+  }
   try {
     backendProcess?.kill();
-  } catch {}
+  } catch {
+    // Ignore cleanup errors
+  }
 });
 
 test("add: 2 + 3 = 5", async ({ page }) => {
