@@ -1,4 +1,3 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
@@ -10,36 +9,56 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 1) Set up Node (no pnpm cache here)
       - name: Setup Node.js
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm' # enables PNPM store cache automatically
 
-      - name: Use pnpm from packageManager via Corepack
+      # 2) Enable Corepack and activate the pnpm version your repo expects
+      - name: Activate pnpm 10.14.0 via Corepack
         run: |
           corepack enable
           corepack prepare pnpm@10.14.0 --activate
           pnpm -v
 
+      # 3) Cache pnpm store (now that pnpm exists, we can resolve the store path)
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # 4) Install deps (fail if lockfile drift)
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # --- Build & start services (example placeholders) ---
+      # 5) Typecheck / Lint / Test (adjust to your workspace scripts)
       - name: Typecheck
         run: pnpm -w run typecheck
 
       - name: Lint
         run: pnpm -w run lint
 
-      - name: Run Playwright tests
-        run: pnpm -w exec playwright install --with-deps && pnpm -w run test:e2e
+      - name: Install Playwright browsers
+        run: pnpm -w exec playwright install --with-deps
 
-      # Optional: always upload logs on failure
+      - name: Run Playwright tests
+        run: pnpm -w run test:e2e
+
+      # 6) Upload artifacts on failure for debugging
       - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
