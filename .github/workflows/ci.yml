@@ -47,16 +47,16 @@ jobs:
 
       # 5) Typecheck / Lint / Test (adjust to your workspace scripts)
       - name: Typecheck
-        run: pnpm -w run typecheck
+        run: pnpm run typecheck
 
       - name: Lint
-        run: pnpm -w run lint
+        run: pnpm run lint
 
       - name: Install Playwright browsers
-        run: pnpm -w exec playwright install --with-deps
+        run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
-        run: pnpm -w run test:e2e
+        run: pnpm test
 
       # 6) Upload artifacts on failure for debugging
       - name: Upload artifacts on failure
