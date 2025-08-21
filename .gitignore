@@ -6,3 +6,15 @@ backend/dist/
 playwright-report/
 test-results/
 test-artifacts/
+
+# --- logs & debug artifacts ---
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+debug/
+trace/
+coverage/
+.nyc_output/
