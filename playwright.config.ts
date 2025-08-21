@@ -1,11 +1,22 @@
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
-  use: {
-    headless: true //Tests run without opening a browser window
-  },
-  // Save screenshots on failure (handy for CI and PRs)
-  reporter: [["list"], ["html", { outputFolder: "playwright-report" }]],
-  testDir: "tests",
-  timeout: 30_000
+  testDir: "./tests",
+  fullyParallel: true,
+  retries: 0,
+  webServer: [
+    {
+      command: "pnpm run build && node backend/dist/server.js",
+      port: 9999,
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+    {
+      // serves /frontend at http://localhost:3000
+      command: "npx http-server frontend -p 3000 -a 127.0.0.1 --silent",
+      port: 3000,
+      reuseExistingServer: true,
+      timeout: 10_000,
+    },
+  ],
 });
