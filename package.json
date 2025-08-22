@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
+    "test:rl": "cross-env EDGE_RL_MAX=3 EDGE_RL_WINDOW_MS=1000 playwright test tests/api/calc.rate-limit.spec.ts",
     "test:build": "pnpm build && pnpm test",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "typecheck": "tsc --noEmit",
-    "build": "tsup backend/src/server.ts --out-dir backend/dist --format=cjs --target=node20 --sourcemap",
+    "build": "tsup backend/src/routes/server.ts --out-dir backend/dist --format=cjs --target=node20 --sourcemap",
     "start": "node backend/dist/server.js",
     "dev:page": "http-server ./frontend -p 3000"
   },
@@ -22,6 +23,7 @@
     "@types/node": "^24.2.1",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
+    "cross-env": "^10.0.0",
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "http-server": "^14.1.1",

@@ -4,6 +4,7 @@ import { applyCORS, isPreflight } from "../utils/cors";
 import { logJSON } from "../utils/log";
 import { notFound } from "../utils/http";
 import { handleCalc } from "../routes/calc";
+import { enforceRateLimit } from "../utils/rateLimit";
 
 function getCorrelationId(req: any): string {
   const incoming = req.headers["x-correlation-id"];
@@ -30,6 +31,10 @@ const server = createServer(async (req, res) => {
   if (isPreflight(req)) {
     res.writeHead(204);
     return res.end();
+  }
+
+  if (req.url?.startsWith("/api/")) {
+    if (enforceRateLimit(req, res, correlationId)) return; // <-- early 429
   }
 
   if (req.method === "POST" && req.url === "/api/calc") {

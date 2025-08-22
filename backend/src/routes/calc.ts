@@ -1,19 +1,50 @@
 import type { IncomingMessage, ServerResponse } from "http";
-import { calcInputSchema, calcOutputSchema, operationToImpl, fingerprint } from "../utils/schemas";
+import {
+  calcInputSchema,
+  calcOutputSchema,
+  operationToImpl,
+  fingerprint,
+} from "../utils/schemas";
 import { readJson, json } from "../utils/http";
 import { logJSON } from "../utils/log";
-import { getIdempotencyKey, tryReplay, saveSuccess, IDEMP_KEY, IDEMP_REPLAYED } from "../utils/idempotency";
+import {
+  getIdempotencyKey,
+  tryReplay,
+  saveSuccess,
+  IDEMP_KEY,
+  IDEMP_REPLAYED,
+} from "../utils/idempotency";
 
-export async function handleCalc(req: IncomingMessage, res: ServerResponse, correlationId: string) {
+export async function handleCalc(
+  req: IncomingMessage,
+  res: ServerResponse,
+  correlationId: string
+) {
   try {
     const body = await readJson(req);
+
+    // ---- TEST HOOK: FORCE 500 (only in non-prod) ----
+    if (
+      process.env.NODE_ENV !== "production" &&
+      req.headers["x-force-500"] === "1"
+    ) {
+      throw new Error("forced_500_for_test");
+    }
+    // -----------------------------------------------
 
     // Input validation
     const parsed = calcInputSchema.safeParse(body);
     if (!parsed.success) {
-      logJSON("error", "validation_failed", { correlationId, issues: parsed.error.issues });
+      logJSON("error", "validation_failed", {
+        correlationId,
+        issues: parsed.error.issues,
+      });
       return json(res, 400, {
-        error: { code: "BAD_INPUT", message: "Validation failed", issues: parsed.error.issues },
+        error: {
+          code: "BAD_INPUT",
+          message: "Validation failed",
+          issues: parsed.error.issues,
+        },
         correlationId,
       });
     }
@@ -33,12 +64,19 @@ export async function handleCalc(req: IncomingMessage, res: ServerResponse, corr
     logJSON("info", "calc_ok", { op, a, b, result, correlationId });
 
     // Output validation
-    const out = { result, correlationId, ...(idemKey ? { idempotencyKey: idemKey, replayed: false } : {}) };
+    const out = {
+      result,
+      correlationId,
+      ...(idemKey ? { idempotencyKey: idemKey, replayed: false } : {}),
+    };
     const outParsed = calcOutputSchema.safeParse(out);
     if (!outParsed.success) {
       logJSON("error", "response_validation_failed", { correlationId });
       return json(res, 500, {
-        error: { code: "BAD_OUTPUT", message: "Internal response validation failed" },
+        error: {
+          code: "BAD_OUTPUT",
+          message: "Internal response validation failed",
+        },
         correlationId,
       });
     }
@@ -52,7 +90,10 @@ export async function handleCalc(req: IncomingMessage, res: ServerResponse, corr
 
     return json(res, 200, outParsed.data);
   } catch (err: any) {
-    logJSON("error", "unhandled_error", { correlationId, message: String(err?.message ?? err) });
+    logJSON("error", "unhandled_error", {
+      correlationId,
+      message: String(err?.message ?? err),
+    });
     return json(res, 500, { error: "Server error", correlationId });
   }
 }

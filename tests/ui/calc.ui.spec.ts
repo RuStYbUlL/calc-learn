@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.use({ baseURL: "http://localhost:3000" });
+test.use({ baseURL: "http://localhost:8080" });
 
 test("add: 2 + 3 = 5", async ({ page }) => {
   await page.goto("/");

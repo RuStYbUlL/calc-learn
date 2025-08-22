@@ -9,14 +9,19 @@ export default defineConfig({
       command: "pnpm run build && node backend/dist/server.js",
       port: 9999,
       reuseExistingServer: true,
-      timeout: 30_000,
+      timeout: 30000,
     },
     {
-      // serves /frontend at http://localhost:3000
-      command: "npx http-server frontend -p 3000 -a 127.0.0.1 --silent",
+      command: "node scripts/static-frontend.js",
       port: 3000,
       reuseExistingServer: true,
-      timeout: 10_000,
+      timeout: 10000,
+    },
+    {
+      command: "node frontend/edge/dev-edge.js",
+      port: 8080,
+      reuseExistingServer: true,
+      timeout: 10000,
     },
   ],
 });

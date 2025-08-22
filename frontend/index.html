@@ -1,33 +1,38 @@
-<!doctype html>
+<!DOCTYPE html>
 <meta charset="utf-8" />
 <title>Calc-Learn (simple)</title>
 
 <h1>Calculator (add / sub / multiply)</h1>
 
-<input id="a" type="number" value="2">
+<input id="a" type="number" value="2" />
 <select id="op">
   <option value="add">add</option>
   <option value="sub">sub</option>
   <option value="mul">mul</option>
 </select>
-<input id="b" type="number" value="3">
+<input id="b" type="number" value="3" />
 <button id="compute">Compute</button>
 
 <pre id="out"></pre>
 
 <script>
-  const API = "http://localhost:9999";
   document.getElementById("compute").onclick = async () => {
     const a = Number(document.getElementById("a").value);
     const b = Number(document.getElementById("b").value);
     const op = document.getElementById("op").value;
 
-    const res = await fetch(API + "/api/calc", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ op, a, b })
-    });
+    // Generate unique rate limit bucket for each request
+    const rlBucket = `ui-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+    const res = await fetch("/api/calc", {
+      // <— relative, same origin (edge)
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-rate-bucket": rlBucket,
+      },
+      body: JSON.stringify({ op, a, b }),
+    });
     const json = await res.json();
     document.getElementById("out").textContent = JSON.stringify(json, null, 2);
   };

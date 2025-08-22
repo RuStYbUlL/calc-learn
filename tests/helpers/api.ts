@@ -1,6 +1,6 @@
 import type { APIRequestContext } from "@playwright/test";
 
-const API_URL = "http://localhost:9999/api/calc";
+const API_URL = "http://localhost:8080/api/calc";
 
 type Op = "add" | "sub" | "mul";
 type CalcBody = { op: Op; a: number; b: number };
